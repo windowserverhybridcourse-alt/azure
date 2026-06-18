@@ -1,0 +1,148 @@
+=================================
+ENABLE THE SECURITY FEATURES
+===================================
+
+enable
+sh version
+conf t
+
+license boot module c1900 technology-package securityk9
+yes
+
+
+exit
+wr
+reload
+
+===========================================
+LEFT SIDE ROUTER (HQ ROUTER)
+==========================================
+en 
+conf t
+hostname HQ
+no ip domain-lookup
+
+interface GigabitEthernet0/0
+ip address 192.168.0.254 255.255.255.0
+no shut 
+exit
+
+interface GigabitEthernet0/1
+ip address 1.1.1.1 255.255.255.0 
+no shut
+exit
+
+ip route 0.0.0.0 0.0.0.0 1.1.1.2
+exit 
+wr
+
+
+===========================================
+MIDDLE ROUTER (ISP ROUTER)
+==========================================
+en 
+conf t
+hostname ISP-ROUTER
+no ip domain-lookup
+
+interface GigabitEthernet0/0
+ip address 1.1.1.2 255.255.255.0 
+no shut
+exit
+
+interface GigabitEthernet0/1
+ip address 2.2.2.2 255.255.255.0 
+no shut
+end 
+wr
+
+===========================================
+RIGHT SIDE ROUTER (BRANCH OFFICE)
+==========================================
+
+en 
+conf t
+hostname BRANCH-OFFICE 
+no ip domain-lookup
+
+interface GigabitEthernet0/1
+ip address 2.2.2.1 255.255.255.0 
+no shut
+exit
+
+interface GigabitEthernet0/0
+ip address 192.168.1.254 255.255.255.0
+no shut 
+exit
+
+ip route 0.0.0.0 0.0.0.0 2.2.2.2
+end 
+wr
+
+
+=============================================================
+LEFT SIDE ROUTER VPN CONFIG (HQ)
+=============================================================
+en
+conf t
+
+ip access-list extended mynetwork
+permit ip 192.168.0.0 0.0.0.255 192.168.1.0 0.0.0.255
+exit
+
+crypto isakmp policy 10
+encryption aes 256
+authentication pre-share
+group 5
+exit
+
+crypto isakmp key secret@123 address 2.2.2.1
+
+crypto ipsec transform-set HQ-BR esp-aes 256 esp-sha-hmac
+
+crypto map IPSEC-HQ 10 ipsec-isakmp
+set peer 2.2.2.1
+set pfs group5
+set security-association lifetime seconds 86400
+set transform-set HQ-BR
+match address mynetwork
+exit
+
+interface GigabitEthernet0/1
+crypto map IPSEC-HQ
+end
+wr
+
+=============================================================
+RIGHT SIDE BRANCH ROUTER VPN CONFIG (BQ)
+=============================================================
+en 
+conf t
+ip access-list extended mynetwork
+permit ip 192.168.1.0 0.0.0.255 192.168.0.0 0.0.0.255
+exit
+
+crypto isakmp policy 10 
+encryption aes 256 
+authentication pre-share 
+group 5
+exit
+
+crypto isakmp key secret@123 address 1.1.1.1
+
+crypto ipsec transform-set BR-HQ esp-aes 256 esp-sha-hmac 
+crypto map IPSEC-BR 10 ipsec-isakmp
+set peer 1.1.1.1
+set pfs group5
+set security-association lifetime seconds 86400 
+set transform-set BR-HQ
+match address mynetwork 
+exit
+
+interface GigabitEthernet0/1 
+crypto map IPSEC-BR
+end 
+wr
+
+
+
